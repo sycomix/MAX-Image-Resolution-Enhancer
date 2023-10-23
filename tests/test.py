@@ -58,8 +58,7 @@ def call_model(file_path):
         file_form = {'image': (file_path, file, 'image/png')}
         r = requests.post(url=model_endpoint, files=file_form)
         assert r.status_code == 200
-        im = Image.open(io.BytesIO(r.content))
-        return im
+        return Image.open(io.BytesIO(r.content))
 
 
 def test_predict():
@@ -91,7 +90,7 @@ def test_predict_other_formats():
 
     with Image.open('samples/test_examples/low_resolution/woman.png') as img:
         for ext in ('jpeg', 'tiff', 'gif'):
-            with NamedTemporaryFile(suffix='.' + ext) as tmp_img:
+            with NamedTemporaryFile(suffix=f'.{ext}') as tmp_img:
                 img.save(tmp_img, ext)
                 im = call_model(file_path=tmp_img.name)
                 assert im.size == (424, 636)

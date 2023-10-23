@@ -80,6 +80,4 @@ class SRGAN_controller:
         # Send the image through the network
         results = self.sess.run(self.save_fetch, feed_dict={self.inputs_raw: INPUT_IMAGE})
 
-        # Convert the image bytestream to a skimage object
-        output_image = skimage.io.imread(io.BytesIO(results['outputs'][0]), plugin='imageio')
-        return output_image
+        return skimage.io.imread(io.BytesIO(results['outputs'][0]), plugin='imageio')

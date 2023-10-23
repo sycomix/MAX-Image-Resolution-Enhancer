@@ -28,7 +28,7 @@ def data_loader(FLAGS):
 
         image_list_LR = os.listdir(FLAGS.input_dir_LR)
         image_list_LR = [_ for _ in image_list_LR if _.endswith('.png')]
-        if len(image_list_LR) == 0:
+        if not image_list_LR:
             raise Exception('No png files in the input directory')
 
         image_list_LR_temp = sorted(image_list_LR)
@@ -82,7 +82,7 @@ def data_loader(FLAGS):
                         tf.floor(tf.random_uniform([], 0, tf.cast(input_size[0], tf.float32) - FLAGS.crop_size)),
                         dtype=tf.int32)
 
-                    if FLAGS.task == 'SRGAN' or FLAGS.task == 'SRResnet':
+                    if FLAGS.task in ['SRGAN', 'SRResnet']:
                         inputs = tf.image.crop_to_bounding_box(inputs, offset_h, offset_w, FLAGS.crop_size,
                                                                FLAGS.crop_size)
                         targets = tf.image.crop_to_bounding_box(targets, offset_h * 4, offset_w * 4,
@@ -93,7 +93,6 @@ def data_loader(FLAGS):
                                                                FLAGS.crop_size)
                         targets = tf.image.crop_to_bounding_box(targets, offset_h, offset_w,
                                                                 FLAGS.crop_size, FLAGS.crop_size)
-                # Do not perform crop
                 else:
                     inputs = tf.identity(inputs)
                     targets = tf.identity(targets)
@@ -111,7 +110,7 @@ def data_loader(FLAGS):
                     input_images = tf.identity(inputs)
                     target_images = tf.identity(targets)
 
-            if FLAGS.task == 'SRGAN' or FLAGS.task == 'SRResnet':
+            if FLAGS.task in ['SRGAN', 'SRResnet']:
                 input_images.set_shape([FLAGS.crop_size, FLAGS.crop_size, 3])
                 target_images.set_shape([FLAGS.crop_size * 4, FLAGS.crop_size * 4, 3])
             elif FLAGS.task == 'denoise':
@@ -129,7 +128,7 @@ def data_loader(FLAGS):
                 batch_size=FLAGS.batch_size, num_threads=FLAGS.queue_thread, allow_smaller_final_batch=True)
 
         steps_per_epoch = int(math.ceil(len(image_list_LR) / FLAGS.batch_size))
-        if FLAGS.task == 'SRGAN' or FLAGS.task == 'SRResnet':
+        if FLAGS.task in ['SRGAN', 'SRResnet']:
             inputs_batch.set_shape([FLAGS.batch_size, FLAGS.crop_size, FLAGS.crop_size, 3])
             targets_batch.set_shape([FLAGS.batch_size, FLAGS.crop_size * 4, FLAGS.crop_size * 4, 3])
         elif FLAGS.task == 'denoise':
@@ -368,20 +367,12 @@ def SRGAN(inputs, targets, FLAGS):
             discrim_real_output = discriminator(targets, FLAGS=FLAGS)
 
     # Use the VGG54 feature
-    if FLAGS.perceptual_mode == 'VGG54':
+    if FLAGS.perceptual_mode in ['VGG54', 'VGG22']:
         with tf.name_scope('vgg19_1') as scope:
             extracted_feature_gen = VGG19_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
         with tf.name_scope('vgg19_2') as scope:
             extracted_feature_target = VGG19_slim(targets, FLAGS.perceptual_mode, reuse=True, scope=scope)
 
-    # Use the VGG22 feature
-    elif FLAGS.perceptual_mode == 'VGG22':
-        with tf.name_scope('vgg19_1') as scope:
-            extracted_feature_gen = VGG19_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
-        with tf.name_scope('vgg19_2') as scope:
-            extracted_feature_target = VGG19_slim(targets, FLAGS.perceptual_mode, reuse=True, scope=scope)
-
-    # Use MSE loss directly
     elif FLAGS.perceptual_mode == 'MSE':
         extracted_feature_gen = gen_output
         extracted_feature_target = targets
@@ -466,13 +457,7 @@ def SRResnet(inputs, targets, FLAGS):
         gen_output.set_shape([FLAGS.batch_size, FLAGS.crop_size * 4, FLAGS.crop_size * 4, 3])
 
     # Use the VGG54 feature
-    if FLAGS.perceptual_mode == 'VGG54':
-        with tf.name_scope('vgg19_1') as scope:
-            extracted_feature_gen = VGG19_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
-        with tf.name_scope('vgg19_2') as scope:
-            extracted_feature_target = VGG19_slim(targets, FLAGS.perceptual_mode, reuse=True, scope=scope)
-
-    elif FLAGS.perceptual_mode == 'VGG22':
+    if FLAGS.perceptual_mode in ['VGG54', 'VGG22']:
         with tf.name_scope('vgg19_1') as scope:
             extracted_feature_gen = VGG19_slim(gen_output, FLAGS.perceptual_mode, reuse=False, scope=scope)
         with tf.name_scope('vgg19_2') as scope:
@@ -533,14 +518,13 @@ def save_images(fetches, mode, output_dir, step=None):
     if not os.path.exists(image_dir):
         os.makedirs(image_dir)
 
-    filesets = []
     in_path = fetches['path_LR']
     name, _ = os.path.splitext(os.path.basename(str(in_path)))
     fileset = {"name": name, "step": step}
 
     if mode == 'inference':
         kind = "outputs"
-        filename = name + ".png"
+        filename = f"{name}.png"
         if step is not None:
             filename = "%08d-%s" % (step, filename)
         fileset[kind] = filename
@@ -548,10 +532,9 @@ def save_images(fetches, mode, output_dir, step=None):
         contents = fetches[kind][0]
         with open(out_path, "wb") as f:
             f.write(contents)
-        filesets.append(fileset)
     else:
         for kind in ["inputs", "outputs", "targets"]:
-            filename = name + "-" + kind + ".png"
+            filename = f"{name}-{kind}.png"
             if step is not None:
                 filename = "%08d-%s" % (step, filename)
             fileset[kind] = filename
@@ -559,5 +542,4 @@ def save_images(fetches, mode, output_dir, step=None):
             contents = fetches[kind][0]
             with open(out_path, "wb") as f:
                 f.write(contents)
-        filesets.append(fileset)
-    return filesets
+    return [fileset]

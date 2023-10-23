@@ -77,9 +77,12 @@ def batchnorm(inputs, is_training):
 
 # Our dense layer
 def denselayer(inputs, output_size):
-    output = tf.layers.dense(inputs, output_size, activation=None,
-                             kernel_initializer=tf.contrib.layers.xavier_initializer())
-    return output
+    return tf.layers.dense(
+        inputs,
+        output_size,
+        activation=None,
+        kernel_initializer=tf.contrib.layers.xavier_initializer(),
+    )
 
 
 # The implementation of PixelShuffler
@@ -99,9 +102,9 @@ def pixelShuffler(inputs, scale=2):
 
     # Reshape and transpose for periodic shuffling for each channel
     input_split = tf.split(inputs, channel_target, axis=3)
-    output = tf.concat([phaseShift(x, scale, shape_1, shape_2) for x in input_split], axis=3)
-
-    return output
+    return tf.concat(
+        [phaseShift(x, scale, shape_1, shape_2) for x in input_split], axis=3
+    )
 
 
 def phaseShift(inputs, scale, shape_1, shape_2):
@@ -116,9 +119,7 @@ def phaseShift(inputs, scale, shape_1, shape_2):
 def random_flip(input, decision):
     f1 = tf.identity(input)
     f2 = tf.image.flip_left_right(input)
-    output = tf.cond(tf.less(decision, 0.5), lambda: f2, lambda: f1)
-
-    return output
+    return tf.cond(tf.less(decision, 0.5), lambda: f2, lambda: f1)
 
 
 # The operation used to print out the configuration
@@ -131,13 +132,8 @@ def print_configuration_op(FLAGS):
             print('\t%s: %f' % (name, value))
         elif type(value) == int:
             print('\t%s: %d' % (name, value))
-        elif type(value) == str:
-            print('\t%s: %s' % (name, value))
-        elif type(value) == bool:
-            print('\t%s: %s' % (name, value))
         else:
             print('\t%s: %s' % (name, value))
-
     print('End of configuration')
 
 
@@ -149,9 +145,7 @@ def compute_psnr(ref, target):
     err = tf.reduce_sum(sqr)
     v = tf.shape(diff)[0] * tf.shape(diff)[1] * tf.shape(diff)[2] * tf.shape(diff)[3]
     mse = err / tf.cast(v, tf.float32)
-    psnr = 10. * (tf.log(255. * 255. / mse) / tf.log(10.))
-
-    return psnr
+    return 10. * (tf.log(255. * 255. / mse) / tf.log(10.))
 
 
 # VGG19 component
@@ -200,7 +194,7 @@ def vgg_19(inputs,
       the last op containing the log predictions and end_points dict.
     """
     with tf.variable_scope(scope, 'vgg_19', [inputs], reuse=reuse) as sc:
-        end_points_collection = sc.name + '_end_points'
+        end_points_collection = f'{sc.name}_end_points'
         # Collect outputs for conv2d, fully_connected and max_pool2d.
         with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
                             outputs_collections=end_points_collection):

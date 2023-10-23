@@ -34,7 +34,7 @@ class ModelWrapper(MAXModelWrapper):
     MODEL_META_DATA = model_meta
 
     def __init__(self, path=DEFAULT_MODEL_PATH):
-        logger.info('Loading model from: {}...'.format(path))
+        logger.info(f'Loading model from: {path}...')
 
         # Initialize the SRGAN controller
         self.SRGAN = SRGAN_controller(checkpoint=DEFAULT_MODEL_PATH)
@@ -43,8 +43,7 @@ class ModelWrapper(MAXModelWrapper):
 
     def _read_image(self, image_data):
         '''Read the image from a Bytestream.'''
-        image = skimage.io.imread(io.BytesIO(image_data), plugin='imageio')
-        return image
+        return skimage.io.imread(io.BytesIO(image_data), plugin='imageio')
 
     def _pre_process(self, image):
         '''
